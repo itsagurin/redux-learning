@@ -32,14 +32,12 @@ export const apiSlice = createApi({
         toggleTaskComplete: builder.mutation({
             async queryFn(id, _api, _extraOptions, baseQuery) {
                 try {
-                    // Получаем текущую задачу
                     const taskResult = await baseQuery(`tasks/${id}`);
                     if (taskResult.error) return { error: taskResult.error };
 
                     const task = taskResult.data;
                     console.log("Current task state:", task);
 
-                    // Отправляем PATCH запрос для изменения статуса
                     const patchResult = await baseQuery({
                         url: `tasks/${id}`,
                         method: 'PATCH',
