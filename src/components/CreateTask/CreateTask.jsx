@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { addTodo } from '../../slices/todosSlice';
+import { useCreateTaskMutation } from '../../api/apiSlice';
 import './CreateTask.scss';
 
 function CreateTask() {
@@ -9,26 +8,30 @@ function CreateTask() {
     const [description, setDescription] = useState('');
     const [priority, setPriority] = useState('normal');
     const navigate = useNavigate();
-    const dispatch = useDispatch();
 
-    const handleSubmit = (e) => {
+    const [createTask, { isLoading }] = useCreateTaskMutation();
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title.trim()) return;
 
-        dispatch(addTodo({
-            id: Date.now(),
-            title,
-            description,
-            priority,
-            createdAt: new Date().toISOString(),
-            completed: false
-        }));
+        try {
+            await createTask({
+                title,
+                description,
+                priority,
+                createdAt: new Date().toISOString(),
+                completed: false
+            }).unwrap();
 
-        setTitle('');
-        setDescription('');
-        setPriority('normal');
+            setTitle('');
+            setDescription('');
+            setPriority('normal');
 
-        navigate('/tasks');
+            navigate('/tasks');
+        } catch (err) {
+            console.error('Failed to create the task:', err);
+        }
     };
 
     return (
@@ -44,6 +47,7 @@ function CreateTask() {
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Введите название задачи"
                         required
+                        disabled={isLoading}
                     />
                 </div>
 
@@ -55,6 +59,7 @@ function CreateTask() {
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Добавьте описание задачи (опционально)"
                         rows="4"
+                        disabled={isLoading}
                     />
                 </div>
 
@@ -64,6 +69,7 @@ function CreateTask() {
                         id="priority"
                         value={priority}
                         onChange={(e) => setPriority(e.target.value)}
+                        disabled={isLoading}
                     >
                         <option value="low">Низкий</option>
                         <option value="normal">Средний</option>
@@ -71,7 +77,9 @@ function CreateTask() {
                     </select>
                 </div>
 
-                <button type="submit" className="btn-create">Создать задачу</button>
+                <button type="submit" className="btn-create" disabled={isLoading}>
+                    {isLoading ? 'Создание...' : 'Создать задачу'}
+                </button>
             </form>
         </div>
     );

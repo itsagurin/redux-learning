@@ -1,13 +1,17 @@
 import { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { toggleComplete, deleteTodo } from '../../slices/todosSlice';
+import {
+    useGetTasksQuery,
+    useToggleTaskCompleteMutation,
+    useDeleteTaskMutation
+} from '../../api/apiSlice';
 import './TaskList.scss';
 
 function TaskList() {
     const [filter, setFilter] = useState('all');
-    const dispatch = useDispatch();
 
-    const tasks = useSelector((state) => state.todos);
+    const { data: tasks = [], isLoading, isError, error } = useGetTasksQuery();
+    const [toggleTaskComplete, { isLoading: isToggling }] = useToggleTaskCompleteMutation();
+    const [deleteTask, { isLoading: isDeleting }] = useDeleteTaskMutation();
 
     const getFilteredTasks = () => {
         switch (filter) {
@@ -38,15 +42,41 @@ function TaskList() {
         });
     };
 
-    const handleToggleComplete = (id) => {
-        dispatch(toggleComplete(id));
+    const handleToggleComplete = async (id) => {
+        try {
+            console.log("Attempting to toggle task with ID:", id); // Добавляем лог для отладки
+            if (!id) {
+                console.error("Cannot toggle task: ID is undefined");
+                return;
+            }
+            const taskId = typeof id === 'object' ? id.id : id;
+            await toggleTaskComplete(taskId).unwrap();
+        } catch (err) {
+            console.error('Failed to toggle task status:', err);
+        }
     };
 
-    const handleDeleteTask = (id) => {
-        dispatch(deleteTodo(id));
+    const handleDeleteTask = async (id) => {
+        try {
+            if (!id) {
+                console.error("Cannot delete task: ID is undefined");
+                return;
+            }
+            await deleteTask(id).unwrap();
+        } catch (err) {
+            console.error('Failed to delete task:', err);
+        }
     };
 
     const filteredTasks = getFilteredTasks();
+
+    if (isLoading) {
+        return <div className="task-list-loading">Загрузка задач...</div>;
+    }
+
+    if (isError) {
+        return <div className="task-list-error">Ошибка: {error.toString()}</div>;
+    }
 
     return (
         <div className="task-list">
@@ -82,8 +112,8 @@ function TaskList() {
                                 <div className="task-header">
                                     <h3>{task.title}</h3>
                                     <span className={`priority-badge ${getPriorityClass(task.priority)}`}>
-                    {task.priority === 'low' ? 'Низкий' : task.priority === 'high' ? 'Высокий' : 'Средний'}
-                  </span>
+                                        {task.priority === 'low' ? 'Низкий' : task.priority === 'high' ? 'Высокий' : 'Средний'}
+                                    </span>
                                 </div>
                                 {task.description && <p className="task-description">{task.description}</p>}
                                 <span className="task-date">Создано: {formatDate(task.createdAt)}</span>
@@ -92,12 +122,14 @@ function TaskList() {
                                 <button
                                     className={`btn-toggle ${task.completed ? 'completed' : ''}`}
                                     onClick={() => handleToggleComplete(task.id)}
+                                    disabled={isToggling}
                                 >
                                     {task.completed ? 'Отменить' : 'Выполнить'}
                                 </button>
                                 <button
                                     className="btn-delete"
                                     onClick={() => handleDeleteTask(task.id)}
+                                    disabled={isDeleting}
                                 >
                                     Удалить
                                 </button>
